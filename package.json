@@ -1,0 +1,17 @@
+{
+  "name": "countdown-manager",
+  "version": "0.1.0",
+  "description": "A beautiful countdown timer manager desktop app built with Tauri v2",
+  "scripts": {
+    "tauri": "tauri",
+    "tauri:dev": "tauri dev",
+    "tauri:build": "tauri build"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.0.0",
+    "sharp": "^0.34.5"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "^2.0.0"
+  }
+}
