@@ -1,7 +1,7 @@
 {
-  "name": "countdown-manager",
+  "name": "tick-tock",
   "version": "0.1.0",
-  "description": "A beautiful countdown timer manager desktop app built with Tauri v2",
+  "description": "Tick...Tock — A beautiful local-first countdown manager",
   "scripts": {
     "tauri": "tauri",
     "tauri:dev": "tauri dev",

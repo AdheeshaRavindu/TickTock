@@ -1,3 +1,5 @@
+#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+
 use tauri::{
     menu::{Menu, MenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
@@ -6,7 +8,6 @@ use tauri::{
 
 fn main() {
     tauri::Builder::default()
-        .plugin(tauri_plugin_shell::init())
         .invoke_handler(tauri::generate_handler![])
         .setup(|app| {
             // ── Build tray menu ──────────────────────────────
@@ -17,7 +18,7 @@ fn main() {
             // ── Create tray icon ─────────────────────────────
             let _tray = TrayIconBuilder::new()
                 .icon(app.default_window_icon().unwrap().clone())
-                .tooltip("Countdown Manager")
+                .tooltip("Tick...Tock")
                 .menu(&menu)
                 // Right-click shows menu; left-click shows/focuses the window
                 .show_menu_on_left_click(false)

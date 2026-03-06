@@ -1,17 +1,17 @@
 {
     "$schema": "https://schema.tauri.app/config/2",
-    "productName": "Countdown Manager",
+    "productName": "Tick...Tock",
     "version": "0.1.0",
     "identifier": "com.ticktock.countdown-manager",
     "build": {
         "frontendDist": "../src"
     },
     "app": {
-        "withGlobalTauri": true,
+        "withGlobalTauri": false,
         "windows": [
             {
                 "label": "main",
-                "title": "Countdown Manager",
+                "title": "Tick...Tock",
                 "width": 1000,
                 "height": 680,
                 "minWidth": 800,
@@ -25,7 +25,7 @@
             }
         ],
         "security": {
-            "csp": null
+            "csp": "default-src 'self' blob:; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: asset:; font-src 'self' data:; connect-src 'self' tauri: asset: blob:; media-src 'self' blob:;"
         }
     },
     "bundle": {
