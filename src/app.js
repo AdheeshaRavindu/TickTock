@@ -4,6 +4,13 @@
 
 'use strict';
 
+// Disable default right-click to make it feel like a native production app
+document.addEventListener('contextmenu', e => {
+  if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA') {
+    e.preventDefault();
+  }
+});
+
 // ── Constants ──────────────────────────────────────
 const STORAGE_KEY = 'countdown_mgr_v3';
 const SETTINGS_KEY = 'countdown_settings_v1';

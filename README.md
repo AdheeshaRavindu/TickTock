@@ -17,7 +17,9 @@ Track your events, set daily alarms, manage your focus with Pomodoro breaks, and
 
 ### 🔔 Alarms & Reminders
 - **Custom Alarms** — Set alarms that repeat once, daily, on weekdays, or on weekends.
-- **Break Time Reminder** — Built-in Pomodoro-style break reminders (e.g., 25 min work, 5 min break) with screen blur and animated overlays.
+- **Break Reminders (Stretchly Mode)** — Advanced eye-strain and stretch break schedules. Support for short "Mini Breaks" and longer physical breaks.
+- **Immersive Takeover** — When break time hits, the app forcefully takes over your screen with a full-screen block, OS taskbar flashing, and Text-To-Speech (TTS) voice announcements so you never miss a rest.
+- **Strict Mode** — Disable the "Skip Break" and "Escape" buttons to enforce healthy habits.
 - **Custom Sounds** — Choose between Chime, Bell, Beep, or Melody with adjustable volume.
 - **Desktop Notifications** — Native OS notifications when time is up.
 
