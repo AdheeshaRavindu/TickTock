@@ -11,7 +11,7 @@ const CATEGORIES = ['🎯 General', '🎂 Birthday', '📅 Deadline', '🚀 Laun
 
 // ── State ──────────────────────────────────────────
 let events = [];
-let settings = { theme: 'dark', alarmSound: 'chime', alarmVolume: 50, notifications: false, snoozeDuration: 5, breakEnabled: false, breakInterval: 25, breakDuration: 5 };
+let settings = { theme: 'dark', alarmSound: 'chime', alarmVolume: 50, notifications: false, snoozeDuration: 5, breakEnabled: false, breakStrict: false, miniBreakInterval: 10, miniBreakDuration: 15, longBreakEvery: 3, longBreakDuration: 5 };
 let tickInterval = null;
 let pendingDeleteId = null;
 let editingId = null;
@@ -36,7 +36,8 @@ let confettiAnimId = null;
 let breakWorkSecs = 0;
 let breakRestSecs = 0;
 let breakActive = false;
-let breakSessionCount = 1;
+let miniBreaksCompleted = 0;
+let isLongBreak = false;
 
 // ── Persistence ────────────────────────────────────
 function loadEvents() {
@@ -588,65 +589,197 @@ function triggerTick(el) {
 }
 
 // ── Break Reminder ─────────────────────────────────
+function updateBreakDashboard() {
+  const bdTimer = document.getElementById('bd-timer');
+  const bdDesc = document.getElementById('bd-desc');
+  const btnToggle = document.getElementById('btn-toggle-breaks');
+
+  if (!bdTimer || !bdDesc || !btnToggle) return;
+
+  if (!settings.breakEnabled) {
+    bdTimer.textContent = '--:--';
+    bdDesc.textContent = 'Breaks are turned off';
+    btnToggle.textContent = 'Enable';
+    btnToggle.className = 'btn btn--add btn--lg';
+    return;
+  }
+
+  btnToggle.textContent = 'Disable';
+  btnToggle.className = 'btn btn--ghost btn--lg';
+
+  if (breakActive) {
+    const nextBreakType = isLongBreak ? 'Long Break' : 'Mini Break';
+    bdTimer.textContent = 'Break Active!';
+    bdDesc.textContent = `Currently in a ${nextBreakType}`;
+  } else {
+    let timeRem = (settings.miniBreakInterval * 60) - breakWorkSecs;
+    if (timeRem < 0) timeRem = 0;
+    const m = Math.floor(timeRem / 60);
+    const s = timeRem % 60;
+
+    bdTimer.textContent = `${m}:${pad(s)}`;
+    const nextBreakType = (miniBreaksCompleted + 1 >= settings.longBreakEvery) ? 'Long Break' : 'Mini Break';
+    bdDesc.textContent = `Time until next ${nextBreakType}`;
+  }
+}
+
+async function setSystemFullscreen(full) {
+  const overlay = document.getElementById('break-overlay');
+  overlay.classList.toggle('is-fullscreen', full);
+
+  try {
+    if (window.__TAURI__ && window.__TAURI__.window) {
+      const win = window.__TAURI__.window.getCurrentWindow();
+      if (full) {
+        await win.unminimize();
+        await win.setFullscreen(true);
+        await win.setAlwaysOnTop(true);
+        await win.show();
+        await win.setFocus();
+        if (typeof win.requestUserAttention === 'function') {
+          await win.requestUserAttention(2); // Critical attention (taskbar flash)
+        }
+      } else {
+        await win.setAlwaysOnTop(false);
+        await win.setFullscreen(false);
+        if (typeof win.requestUserAttention === 'function') {
+          await win.requestUserAttention(null);
+        }
+      }
+    }
+  } catch (err) {
+    console.log('Tauri fullscreen failed or unavailable', err);
+  }
+}
+
 function handleBreakTick() {
+  updateBreakDashboard();
+
   if (!settings.breakEnabled) return;
 
   if (!breakActive) {
     breakWorkSecs++;
-    if (breakWorkSecs >= settings.breakInterval * 60) {
-      showBreak();
+    if (breakWorkSecs >= settings.miniBreakInterval * 60) {
+      // Time for a break!
+      miniBreaksCompleted++;
+      if (miniBreaksCompleted >= settings.longBreakEvery) {
+        showBreak(true);
+      } else {
+        showBreak(false);
+      }
     }
   } else {
     breakRestSecs--;
     updateBreakOverlay();
+
+    // Aggressively keep the window on top while break is active
+    if (window.__TAURI__ && window.__TAURI__.window) {
+      const win = window.__TAURI__.window.getCurrentWindow();
+      win.unminimize().catch(() => { });
+      win.setAlwaysOnTop(true).catch(() => { });
+      win.setFocus().catch(() => { });
+    }
+
     if (breakRestSecs <= 0) {
       endBreak();
     }
   }
 }
 
-function showBreak() {
+function showBreak(longBreak) {
   breakActive = true;
-  breakRestSecs = settings.breakDuration * 60;
+  isLongBreak = longBreak;
 
-  document.getElementById('break-session-count').textContent = breakSessionCount;
-  document.getElementById('break-work-total').textContent = `${settings.breakInterval}m`;
+  if (longBreak) {
+    breakRestSecs = settings.longBreakDuration * 60;
+    document.getElementById('break-title').textContent = "Time for a Long Break!";
+    document.getElementById('break-tip').textContent = "Stand up, stretch your legs, and get some water.";
+    document.getElementById('break-icon').textContent = "🚶‍♂️";
+    miniBreaksCompleted = 0; // reset for next cycle
+  } else {
+    breakRestSecs = settings.miniBreakDuration; // in seconds
+    document.getElementById('break-title').textContent = "Mini Break";
+    document.getElementById('break-tip').textContent = "Look away from the screen and rest your eyes.";
+    document.getElementById('break-icon').textContent = "👀";
+  }
+
+  const nextLong = settings.longBreakEvery - miniBreaksCompleted;
+  document.getElementById('break-upcoming-text').textContent = longBreak ? "Starting a new break cycle next" : `🔥 Next long break in ${nextLong} mini break${nextLong === 1 ? '' : 's'}`;
+
+  // Strict mode check
+  const skipBtn = document.getElementById('btn-skip-break');
+  if (settings.breakStrict) {
+    skipBtn.disabled = true;
+    skipBtn.style.opacity = '0.4';
+    skipBtn.textContent = "Strict Mode";
+  } else {
+    skipBtn.disabled = false;
+    skipBtn.style.opacity = '1';
+    skipBtn.textContent = "Skip Break";
+  }
+
   updateBreakOverlay();
-
   document.getElementById('break-overlay').hidden = false;
+
+  // Set window to full-screen and take over
+  setSystemFullscreen(true);
+
   playSound(settings.alarmSound);
-  if (settings.notifications && 'Notification' in window && Notification.permission === 'granted') {
-    new Notification('☕ Time for a Break!', { body: 'Stand up, stretch, and rest your eyes.' });
+
+  // Method 1: Desktop Notification natively pushed
+  if ('Notification' in window) {
+    if (Notification.permission === 'granted') {
+      new Notification(longBreak ? '🚶‍♂️ Long Break!' : '👀 Mini Break!', { body: longBreak ? 'Stand up and stretch.' : 'Rest your eyes.' });
+    } else if (Notification.permission !== 'denied') {
+      Notification.requestPermission().then(p => {
+        if (p === 'granted') new Notification(longBreak ? '🚶‍♂️ Long Break!' : '👀 Mini Break!', { body: longBreak ? 'Stand up and stretch.' : 'Rest your eyes.' });
+      });
+    }
+  }
+
+  // Method 2: Voice Announcement (Speech Synthesis OS integration)
+  try {
+    if ('speechSynthesis' in window) {
+      const msg = longBreak ? "Time for a long break. Please stand up." : "Time for a mini break. Rest your eyes.";
+      const utterance = new SpeechSynthesisUtterance(msg);
+      utterance.volume = 1;
+      utterance.rate = 1;
+      window.speechSynthesis.speak(utterance);
+    }
+  } catch (e) {
+    console.log("Speech synthesis failed", e);
   }
 }
 
 function updateBreakOverlay() {
   const m = Math.floor(breakRestSecs / 60);
   const s = breakRestSecs % 60;
-  document.getElementById('break-countdown').textContent = `${m}:${pad(s)}`;
 
-  const total = settings.breakDuration * 60;
+  if (m > 0) {
+    document.getElementById('break-countdown').textContent = `${m}:${pad(s)}`;
+  } else {
+    document.getElementById('break-countdown').textContent = String(s);
+  }
+
+  const total = isLongBreak ? settings.longBreakDuration * 60 : settings.miniBreakDuration;
   const percent = total > 0 ? (breakRestSecs / total) * 100 : 0;
   document.getElementById('break-progress').style.width = `${percent}%`;
 }
 
 function skipBreak() {
+  if (settings.breakStrict) return;
   breakActive = false;
   breakWorkSecs = 0;
   document.getElementById('break-overlay').hidden = true;
+  setSystemFullscreen(false);
   stopAllSounds();
-}
-
-function extendBreak() {
-  breakRestSecs += 5 * 60;
-  updateBreakOverlay();
 }
 
 function endBreak() {
   breakActive = false;
   breakWorkSecs = 0;
-  breakSessionCount++;
   document.getElementById('break-overlay').hidden = true;
+  setSystemFullscreen(false);
   playSound('chime');
   stopAllSounds(); // To prevent spam
 }
@@ -655,6 +788,7 @@ function hideBreak() {
   breakActive = false;
   breakWorkSecs = 0;
   document.getElementById('break-overlay').hidden = true;
+  setSystemFullscreen(false);
 }
 
 // ── Title Badge ────────────────────────────────────
@@ -1031,9 +1165,6 @@ function openSettings() {
   document.getElementById('setting-volume').value = settings.alarmVolume;
   document.getElementById('setting-notifications').checked = settings.notifications;
   document.getElementById('setting-snooze').value = settings.snoozeDuration;
-  document.getElementById('setting-break-enabled').checked = settings.breakEnabled;
-  document.getElementById('setting-break-interval').value = settings.breakInterval;
-  document.getElementById('setting-break-duration').value = settings.breakDuration;
   document.getElementById('settings-overlay').hidden = false;
 }
 function closeSettings() {
@@ -1041,15 +1172,7 @@ function closeSettings() {
   settings.alarmVolume = parseInt(document.getElementById('setting-volume').value);
   settings.notifications = document.getElementById('setting-notifications').checked;
   settings.snoozeDuration = parseInt(document.getElementById('setting-snooze').value);
-  const oldBreak = settings.breakEnabled;
-  settings.breakEnabled = document.getElementById('setting-break-enabled').checked;
-  settings.breakInterval = parseInt(document.getElementById('setting-break-interval').value) || 25;
-  settings.breakDuration = parseInt(document.getElementById('setting-break-duration').value) || 5;
   saveSettings();
-  if (oldBreak !== settings.breakEnabled) {
-    if (settings.breakEnabled) { breakWorkSecs = 0; breakSessionCount = 1; }
-    else { hideBreak(); }
-  }
   document.getElementById('settings-overlay').hidden = true;
 }
 
@@ -1095,6 +1218,55 @@ function handleKeyShortcuts(e) {
 
 // ── Event Listeners ────────────────────────────────
 formEl.addEventListener('submit', handleSubmit);
+
+// Break Reminder UI Initialization
+const breakInputs = [
+  'setting-break-strict',
+  'setting-mini-break-interval',
+  'setting-mini-break-duration',
+  'setting-long-break-every',
+  'setting-long-break-duration'
+];
+
+function initBreakSettings() {
+  document.getElementById('setting-break-strict').checked = settings.breakStrict;
+  document.getElementById('setting-mini-break-interval').value = settings.miniBreakInterval;
+  document.getElementById('setting-mini-break-duration').value = settings.miniBreakDuration;
+  document.getElementById('setting-long-break-every').value = settings.longBreakEvery;
+  document.getElementById('setting-long-break-duration').value = settings.longBreakDuration;
+
+  // Handle Toggle Button
+  const btnToggle = document.getElementById('btn-toggle-breaks');
+  btnToggle.addEventListener('click', () => {
+    settings.breakEnabled = !settings.breakEnabled;
+    saveSettings();
+    showToast(`☕ Break reminders ${settings.breakEnabled ? 'enabled' : 'disabled'}!`);
+
+    if (settings.breakEnabled) {
+      breakWorkSecs = 0;
+      miniBreaksCompleted = 0;
+    } else {
+      hideBreak();
+    }
+    updateBreakDashboard();
+  });
+
+  breakInputs.forEach(id => {
+    document.getElementById(id).addEventListener('change', () => {
+      settings.breakStrict = document.getElementById('setting-break-strict').checked;
+      settings.miniBreakInterval = parseInt(document.getElementById('setting-mini-break-interval').value) || 10;
+      settings.miniBreakDuration = parseInt(document.getElementById('setting-mini-break-duration').value) || 15;
+      settings.longBreakEvery = parseInt(document.getElementById('setting-long-break-every').value) || 3;
+      settings.longBreakDuration = parseInt(document.getElementById('setting-long-break-duration').value) || 5;
+
+      saveSettings();
+      showToast('☕ Break settings saved!');
+      updateBreakDashboard();
+    });
+  });
+
+  updateBreakDashboard();
+}
 
 inputLabel.addEventListener('input', () => { errLabel.textContent = ''; inputLabel.classList.remove('is-invalid'); });
 inputDt.addEventListener('input', () => { errDt.textContent = ''; inputDt.classList.remove('is-invalid'); });
@@ -1142,8 +1314,6 @@ document.getElementById('setting-notifications').addEventListener('change', (e) 
 
 // Break actions
 document.getElementById('btn-skip-break').addEventListener('click', skipBreak);
-document.getElementById('btn-extend-break').addEventListener('click', extendBreak);
-document.getElementById('btn-end-break').addEventListener('click', endBreak);
 
 // Shortcuts help
 document.getElementById('btn-shortcuts-help').addEventListener('click', () => { document.getElementById('shortcuts-overlay').hidden = false; });
@@ -1181,6 +1351,13 @@ document.addEventListener('keydown', handleKeyShortcuts);
 // ── Boot ───────────────────────────────────────────
 function boot() {
   loadSettings();
+
+  // Ensure breaks are disabled by default on every boot to keep the status neutral
+  if (settings.breakEnabled) {
+    settings.breakEnabled = false;
+    saveSettings();
+  }
+
   loadEvents();
 
   // Apply theme
@@ -1189,6 +1366,9 @@ function boot() {
   // Populate timezones
   populateTimezones(inputTimezone);
   populateTimezones(document.getElementById('edit-timezone'));
+
+  // Initialize Break Settings Tab
+  initBreakSettings();
 
   // Default datetime to 7 days from now
   const d = new Date(Date.now() + 7 * 86400000);

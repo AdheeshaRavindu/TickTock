@@ -7,6 +7,13 @@
     ],
     "permissions": [
         "core:default",
-        "core:tray:default"
+        "core:tray:default",
+        "core:window:allow-set-always-on-top",
+        "core:window:allow-set-fullscreen",
+        "core:window:allow-set-focus",
+        "core:window:allow-show",
+        "core:window:allow-maximize",
+        "core:window:allow-unmaximize",
+        "core:event:default"
     ]
 }

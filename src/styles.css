@@ -2290,11 +2290,31 @@ kbd {
   backdrop-filter: blur(12px);
 }
 
+.break-overlay.is-fullscreen {
+  background: var(--bg);
+  z-index: 9999;
+}
+
 .break-dialog {
   max-width: 440px;
   text-align: center;
   overflow: hidden;
   position: relative;
+  transition: all var(--t-slow);
+}
+
+.break-overlay.is-fullscreen .break-dialog {
+  max-width: 100vw;
+  width: 100%;
+  height: 100%;
+  border-radius: 0;
+  border: none;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  box-shadow: none;
 }
 
 .break-dialog__bg {
@@ -2302,6 +2322,11 @@ kbd {
   inset: 0;
   background: linear-gradient(135deg, rgba(52, 211, 153, .08), rgba(56, 189, 248, .08));
   pointer-events: none;
+  transition: all var(--t-slow);
+}
+
+.break-overlay.is-fullscreen .break-dialog__bg {
+  background: radial-gradient(circle at center, rgba(52, 211, 153, .12), transparent 80%);
 }
 
 .break-dialog__icon-wrap {
@@ -2316,11 +2341,23 @@ kbd {
   animation: break-float 3s ease-in-out infinite;
   position: relative;
   z-index: 1;
+  transition: all var(--t-slow);
+}
+
+.break-overlay.is-fullscreen .break-dialog__icon-wrap {
+  width: 140px;
+  height: 140px;
+  margin-bottom: 24px;
 }
 
 .break-dialog__icon {
   font-size: 40px;
   filter: drop-shadow(0 2px 8px rgba(52, 211, 153, .4));
+  transition: font-size var(--t-slow);
+}
+
+.break-overlay.is-fullscreen .break-dialog__icon {
+  font-size: 70px;
 }
 
 @keyframes break-float {
@@ -2339,6 +2376,12 @@ kbd {
   color: #34d399;
   position: relative;
   z-index: 1;
+  transition: all var(--t-slow);
+}
+
+.break-overlay.is-fullscreen .break-dialog__title {
+  font-size: 36px;
+  margin-bottom: 16px;
 }
 
 .break-dialog__desc {
@@ -2348,6 +2391,12 @@ kbd {
   color: var(--text-2);
   line-height: 1.5;
   min-height: 42px;
+  transition: all var(--t-slow);
+}
+
+.break-overlay.is-fullscreen .break-dialog__desc {
+  font-size: 20px;
+  margin-bottom: 32px;
 }
 
 .break-dialog__timer {
@@ -2359,6 +2408,12 @@ kbd {
   padding: 12px 0;
   position: relative;
   z-index: 1;
+  transition: all var(--t-slow);
+}
+
+.break-overlay.is-fullscreen .break-dialog__timer {
+  font-size: 100px;
+  margin-bottom: 32px;
 }
 
 .break-dialog__progress-wrap {
@@ -2370,6 +2425,14 @@ kbd {
   margin-bottom: 16px;
   position: relative;
   z-index: 1;
+  transition: all var(--t-slow);
+}
+
+.break-overlay.is-fullscreen .break-dialog__progress-wrap {
+  width: 60%;
+  max-width: 600px;
+  height: 12px;
+  margin-bottom: 32px;
 }
 
 .break-dialog__progress {
@@ -2389,6 +2452,12 @@ kbd {
   margin-bottom: 8px;
   position: relative;
   z-index: 1;
+  transition: all var(--t-slow);
+}
+
+.break-overlay.is-fullscreen .break-dialog__stats {
+  font-size: 18px;
+  margin-bottom: 48px;
 }
 
 .break-dialog__stats strong {
@@ -2398,9 +2467,45 @@ kbd {
 .break-dialog__actions {
   position: relative;
   z-index: 1;
+  justify-content: center;
 }
 
-/* ── 27. Utility ─────────────────────────────────── */
+.break-overlay.is-fullscreen .break-dialog__actions {
+  width: 100%;
+  max-width: 400px;
+}
+
+/* ── 27. Break Dashboard ───────────────────────────── */
+.break-dashboard {
+  background: var(--surface-2);
+  border-radius: var(--r-md);
+  padding: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+}
+
+.break-dashboard__info {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.break-dashboard__timer {
+  font-size: 32px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-1);
+  letter-spacing: -0.5px;
+}
+
+.break-dashboard__desc {
+  font-size: 14px;
+  color: var(--text-2);
+}
+
+/* ── 28. Utility ─────────────────────────────────── */
 [hidden] {
   display: none !important;
 }
