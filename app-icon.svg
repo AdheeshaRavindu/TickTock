@@ -1,0 +1,85 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <!-- Background Gradient -->
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1e1b4b" />
+      <stop offset="50%" stop-color="#171717" />
+      <stop offset="100%" stop-color="#0f172a" />
+    </linearGradient>
+
+    <!-- Ring Gradient 1 (Electric Blue) -->
+    <linearGradient id="ring1" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#38bdf8" />
+      <stop offset="100%" stop-color="#0284c7" />
+    </linearGradient>
+
+    <!-- Ring Gradient 2 (Neon Purple) -->
+    <linearGradient id="ring2" x1="100%" y1="100%" x2="0%" y2="0%">
+      <stop offset="0%" stop-color="#7b61ff" />
+      <stop offset="100%" stop-color="#a855f7" />
+    </linearGradient>
+
+    <!-- Center Icon Gradient -->
+    <linearGradient id="iconGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff" />
+      <stop offset="100%" stop-color="#cbd5e1" />
+    </linearGradient>
+
+    <!-- Neon Glow Filter -->
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="30" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+    
+    <!-- Outer Glow -->
+    <filter id="glow-heavy" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="60" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+
+    <!-- Glass Effect -->
+    <radialGradient id="glass" cx="30%" cy="30%" r="70%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.15" />
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0.0" />
+    </radialGradient>
+  </defs>
+
+  <!-- Background Base -->
+  <rect x="0" y="0" width="1024" height="1024" rx="224" fill="url(#bgGrad)" />
+  
+  <!-- Subtle border for depth -->
+  <rect x="8" y="8" width="1008" height="1008" rx="216" fill="transparent" stroke="#334155" stroke-width="8" />
+
+  <!-- Outer Neon Blur Backings -->
+  <circle cx="512" cy="512" r="320" fill="none" stroke="url(#ring1)" stroke-width="48" filter="url(#glow-heavy)" opacity="0.6"/>
+  <circle cx="512" cy="512" r="320" fill="none" stroke="url(#ring2)" stroke-width="48" filter="url(#glow-heavy)" opacity="0.6" transform="rotate(180 512 512)"/>
+
+  <!-- Crisp Inner Rings -->
+  <circle cx="512" cy="512" r="320" fill="none" stroke="url(#ring1)" stroke-width="32" stroke-linecap="round" stroke-dasharray="1000 1010" />
+  <circle cx="512" cy="512" r="320" fill="none" stroke="url(#ring2)" stroke-width="32" stroke-linecap="round" stroke-dasharray="800 1210" transform="rotate(90 512 512)" />
+
+  <!-- Glass Inner Bubble -->
+  <circle cx="512" cy="512" r="280" fill="url(#glass)" />
+  <!-- Glass Reflection -->
+  <path d="M 312 312 Q 512 112 712 312 Q 512 450 312 312 Z" fill="#ffffff" opacity="0.08" />
+
+  <!-- Center Hourglass Abstract Icon -->
+  <g fill="url(#iconGrad)" filter="url(#glow)" transform="translate(144, 144) scale(0.72)">
+    <!-- Top & Bottom Caps -->
+    <rect x="312" y="200" width="400" height="40" rx="16" />
+    <rect x="312" y="784" width="400" height="40" rx="16" />
+    
+    <!-- Left Glass Arc -->
+    <path d="M 336 240 C 336 400, 472 450, 472 512 C 472 574, 336 624, 336 784 L 384 784 C 384 650, 500 590, 500 512 C 500 434, 384 374, 384 240 Z" />
+    
+    <!-- Right Glass Arc -->
+    <path d="M 688 240 C 688 400, 552 450, 552 512 C 552 574, 688 624, 688 784 L 640 784 C 640 650, 524 590, 524 512 C 524 434, 640 374, 640 240 Z" />
+    
+    <!-- Sand particles / Center emphasis -->
+    <circle cx="512" cy="512" r="24" fill="#38bdf8" filter="url(#glow)"/>
+    <!-- Falling sand -->
+    <path d="M 504 536 L 520 536 L 516 680 L 508 680 Z" fill="#38bdf8" opacity="0.7"/>
+    <!-- Bottom pile -->
+    <path d="M 440 784 Q 512 680 584 784 Z" fill="#38bdf8" opacity="0.6"/>
+  </g>
+</svg>

@@ -2269,7 +2269,138 @@ kbd {
   gap: 12px;
 }
 
-/* ── 25. Utility ─────────────────────────────────── */
+/* ── 25. Settings Extras ─────────────────────────── */
+.settings-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 12px 0;
+}
+
+.settings-section-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-2);
+  letter-spacing: .5px;
+  margin-bottom: 8px;
+}
+
+/* ── 26. Break Reminder Overlay ──────────────────── */
+.break-overlay {
+  background: rgba(0, 0, 0, .65);
+  backdrop-filter: blur(12px);
+}
+
+.break-dialog {
+  max-width: 440px;
+  text-align: center;
+  overflow: hidden;
+  position: relative;
+}
+
+.break-dialog__bg {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(52, 211, 153, .08), rgba(56, 189, 248, .08));
+  pointer-events: none;
+}
+
+.break-dialog__icon-wrap {
+  margin: 0 auto 12px;
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, rgba(52, 211, 153, .2), rgba(56, 189, 248, .15));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: break-float 3s ease-in-out infinite;
+  position: relative;
+  z-index: 1;
+}
+
+.break-dialog__icon {
+  font-size: 40px;
+  filter: drop-shadow(0 2px 8px rgba(52, 211, 153, .4));
+}
+
+@keyframes break-float {
+
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+.break-dialog__title {
+  color: #34d399;
+  position: relative;
+  z-index: 1;
+}
+
+.break-dialog__desc {
+  position: relative;
+  z-index: 1;
+  font-size: 14px;
+  color: var(--text-2);
+  line-height: 1.5;
+  min-height: 42px;
+}
+
+.break-dialog__timer {
+  font-size: 48px;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -1px;
+  color: var(--text-1);
+  padding: 12px 0;
+  position: relative;
+  z-index: 1;
+}
+
+.break-dialog__progress-wrap {
+  width: 100%;
+  height: 6px;
+  border-radius: var(--r-full);
+  background: var(--surface-3);
+  overflow: hidden;
+  margin-bottom: 16px;
+  position: relative;
+  z-index: 1;
+}
+
+.break-dialog__progress {
+  height: 100%;
+  border-radius: var(--r-full);
+  background: linear-gradient(90deg, #34d399, #38bdf8);
+  transition: width 1s linear;
+  width: 100%;
+}
+
+.break-dialog__stats {
+  display: flex;
+  justify-content: center;
+  gap: 24px;
+  font-size: 13px;
+  color: var(--text-3);
+  margin-bottom: 8px;
+  position: relative;
+  z-index: 1;
+}
+
+.break-dialog__stats strong {
+  color: var(--text-1);
+}
+
+.break-dialog__actions {
+  position: relative;
+  z-index: 1;
+}
+
+/* ── 27. Utility ─────────────────────────────────── */
 [hidden] {
   display: none !important;
 }

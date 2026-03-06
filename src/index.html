@@ -431,6 +431,33 @@
     </div>
   </div>
 
+  <!-- ── Break Reminder Overlay ── -->
+  <div class="overlay break-overlay" id="break-overlay" role="alertdialog" aria-modal="true" hidden>
+    <div class="dialog break-dialog">
+      <div class="break-dialog__bg" aria-hidden="true"></div>
+      <div class="break-dialog__icon-wrap">
+        <span class="break-dialog__icon" aria-hidden="true">☕</span>
+      </div>
+      <h2 class="dialog__title break-dialog__title">Time for a Break!</h2>
+      <p class="dialog__desc break-dialog__desc" id="break-tip">Stand up, stretch, and rest your eyes.</p>
+      <div class="break-dialog__timer">
+        <span id="break-countdown">5:00</span>
+      </div>
+      <div class="break-dialog__progress-wrap">
+        <div class="break-dialog__progress" id="break-progress"></div>
+      </div>
+      <div class="break-dialog__stats">
+        <span>🔥 Session <strong id="break-session-count">1</strong></span>
+        <span>⏱ Worked <strong id="break-work-total">25m</strong></span>
+      </div>
+      <div class="dialog__actions break-dialog__actions">
+        <button class="btn btn--ghost" id="btn-skip-break">Skip Break</button>
+        <button class="btn btn--ghost" id="btn-extend-break">+5 min</button>
+        <button class="btn btn--add" id="btn-end-break">I'm Back!</button>
+      </div>
+    </div>
+  </div>
+
   <!-- ── Settings Dialog ── -->
   <div class="overlay" id="settings-overlay" role="dialog" aria-modal="true" hidden>
     <div class="dialog settings-dialog">
@@ -466,6 +493,38 @@
           <option value="30">30 minutes</option>
         </select>
       </div>
+
+      <!-- Break Reminder Settings -->
+      <div class="settings-divider"></div>
+      <h3 class="settings-section-title">☕ Break Reminder</h3>
+      <div class="settings-group">
+        <label class="settings-check-label">
+          <input type="checkbox" id="setting-break-enabled" />
+          Enable Break Reminders
+        </label>
+      </div>
+      <div class="settings-group">
+        <label class="form__label" for="setting-break-interval">Remind Every</label>
+        <select class="form__input form__input--select" id="setting-break-interval">
+          <option value="15">15 minutes</option>
+          <option value="20">20 minutes</option>
+          <option value="25" selected>25 minutes (Pomodoro)</option>
+          <option value="30">30 minutes</option>
+          <option value="45">45 minutes</option>
+          <option value="60">60 minutes</option>
+          <option value="90">90 minutes</option>
+        </select>
+      </div>
+      <div class="settings-group">
+        <label class="form__label" for="setting-break-duration">Break Duration</label>
+        <select class="form__input form__input--select" id="setting-break-duration">
+          <option value="3">3 minutes</option>
+          <option value="5" selected>5 minutes</option>
+          <option value="10">10 minutes</option>
+          <option value="15">15 minutes</option>
+        </select>
+      </div>
+
       <div class="dialog__actions">
         <button class="btn btn--add" id="btn-close-settings" type="button">Done</button>
       </div>

@@ -11,7 +11,7 @@ const CATEGORIES = ['🎯 General', '🎂 Birthday', '📅 Deadline', '🚀 Laun
 
 // ── State ──────────────────────────────────────────
 let events = [];
-let settings = { theme: 'dark', alarmSound: 'chime', alarmVolume: 50, notifications: false, snoozeDuration: 5 };
+let settings = { theme: 'dark', alarmSound: 'chime', alarmVolume: 50, notifications: false, snoozeDuration: 5, breakEnabled: false, breakInterval: 25, breakDuration: 5 };
 let tickInterval = null;
 let pendingDeleteId = null;
 let editingId = null;
@@ -27,16 +27,23 @@ let alarmAudioCtx = null;
 let alarmInterval = null;
 let alarmActive = false;
 let alarmEventId = null;
+let timerAlarmInterval = null;
+let soundMuted = false;
 let confettiParticles = [];
 let confettiAnimId = null;
 
+// Break Time Info
+let breakWorkSecs = 0;
+let breakRestSecs = 0;
+let breakActive = false;
+let breakSessionCount = 1;
+
 // ── Persistence ────────────────────────────────────
 function loadEvents() {
-  try { events = JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; } catch { events = []; }
-  // migrate old events
-  events = events.map(ev => ({
-    category: '🎯 General', notes: '', recurrence: 'none', timezone: '', order: 0, ...ev
-  }));
+  try {
+    events = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+  } catch { events = []; }
+  events = events.map(ev => sanitizeEvent({ category: '🎯 General', notes: '', recurrence: 'none', timezone: '', order: 0, ...ev })).filter(Boolean);
 }
 function saveEvents() {
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(events)); } catch (e) { console.warn('save failed', e); }
@@ -96,7 +103,7 @@ function formatDate(isoString, tz) {
 }
 
 function pad(n, len = 2) { return String(n).padStart(len, '0'); }
-function escHtml(s) { return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+function escHtml(s) { return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
 function localTZ() { try { return Intl.DateTimeFormat().resolvedOptions().timeZone; } catch { return ''; } }
 
 function relativeTime(isoString) {
@@ -144,6 +151,7 @@ function getAudioCtx() {
 }
 
 function playSound(type) {
+  if (soundMuted) return; // Global mute flag — prevents orphaned intervals from making noise
   const ctx = getAudioCtx();
   const now = ctx.currentTime;
   const vol = (settings.alarmVolume || 50) / 100 * 0.4;
@@ -169,6 +177,16 @@ function playSound(type) {
   });
 }
 
+// Global sound stop — clears ALL sound-producing intervals
+function stopAllSounds() {
+  soundMuted = true;
+  if (alarmInterval) { clearInterval(alarmInterval); alarmInterval = null; }
+  if (timerAlarmInterval) { clearInterval(timerAlarmInterval); timerAlarmInterval = null; }
+  if (alarmAudioCtx) { alarmAudioCtx.close().catch(() => { }); alarmAudioCtx = null; }
+  // Un-mute after a short delay so future sounds work
+  setTimeout(() => { soundMuted = false; }, 500);
+}
+
 function startAlarm(eventLabel, eventId) {
   if (alarmActive) return;
   alarmActive = true;
@@ -188,8 +206,7 @@ function startAlarm(eventLabel, eventId) {
 function stopAlarm() {
   alarmActive = false;
   alarmEventId = null;
-  if (alarmInterval) { clearInterval(alarmInterval); alarmInterval = null; }
-  if (alarmAudioCtx) { alarmAudioCtx.close().catch(() => { }); alarmAudioCtx = null; }
+  stopAllSounds();
   document.getElementById('alarm-overlay').hidden = true;
 }
 
@@ -386,7 +403,7 @@ function buildCard(ev, cd) {
 
   const rel = relativeTime(ev.datetime);
   const recLabel = ev.recurrence !== 'none' ? `🔁 ${ev.recurrence.charAt(0).toUpperCase() + ev.recurrence.slice(1)}` : '';
-  const tzLabel = ev.timezone ? ` (${ev.timezone.replace(/_/g, ' ')})` : '';
+  const tzLabel = ev.timezone ? ` (${escHtml(ev.timezone.replace(/_/g, ' '))})` : '';
 
   li.innerHTML = `
     <div class="card__body">
@@ -501,6 +518,7 @@ function buildCard(ev, cd) {
 
 // ── Live Tick ──────────────────────────────────────
 function tickAll() {
+  handleBreakTick();
   events.forEach(ev => {
     const cd = getCountdown(ev.datetime);
     const card = cardsList.querySelector(`[data-id="${ev.id}"]`);
@@ -567,6 +585,76 @@ function triggerTick(el) {
   el.classList.remove('tick');
   void el.offsetWidth;
   el.classList.add('tick');
+}
+
+// ── Break Reminder ─────────────────────────────────
+function handleBreakTick() {
+  if (!settings.breakEnabled) return;
+
+  if (!breakActive) {
+    breakWorkSecs++;
+    if (breakWorkSecs >= settings.breakInterval * 60) {
+      showBreak();
+    }
+  } else {
+    breakRestSecs--;
+    updateBreakOverlay();
+    if (breakRestSecs <= 0) {
+      endBreak();
+    }
+  }
+}
+
+function showBreak() {
+  breakActive = true;
+  breakRestSecs = settings.breakDuration * 60;
+
+  document.getElementById('break-session-count').textContent = breakSessionCount;
+  document.getElementById('break-work-total').textContent = `${settings.breakInterval}m`;
+  updateBreakOverlay();
+
+  document.getElementById('break-overlay').hidden = false;
+  playSound(settings.alarmSound);
+  if (settings.notifications && 'Notification' in window && Notification.permission === 'granted') {
+    new Notification('☕ Time for a Break!', { body: 'Stand up, stretch, and rest your eyes.' });
+  }
+}
+
+function updateBreakOverlay() {
+  const m = Math.floor(breakRestSecs / 60);
+  const s = breakRestSecs % 60;
+  document.getElementById('break-countdown').textContent = `${m}:${pad(s)}`;
+
+  const total = settings.breakDuration * 60;
+  const percent = total > 0 ? (breakRestSecs / total) * 100 : 0;
+  document.getElementById('break-progress').style.width = `${percent}%`;
+}
+
+function skipBreak() {
+  breakActive = false;
+  breakWorkSecs = 0;
+  document.getElementById('break-overlay').hidden = true;
+  stopAllSounds();
+}
+
+function extendBreak() {
+  breakRestSecs += 5 * 60;
+  updateBreakOverlay();
+}
+
+function endBreak() {
+  breakActive = false;
+  breakWorkSecs = 0;
+  breakSessionCount++;
+  document.getElementById('break-overlay').hidden = true;
+  playSound('chime');
+  stopAllSounds(); // To prevent spam
+}
+
+function hideBreak() {
+  breakActive = false;
+  breakWorkSecs = 0;
+  document.getElementById('break-overlay').hidden = true;
 }
 
 // ── Title Badge ────────────────────────────────────
@@ -733,23 +821,46 @@ function exportEvents() {
   showToast('📤 Events exported!');
 }
 
+function sanitizeEvent(ev) {
+  if (!ev || typeof ev !== 'object' || Array.isArray(ev)) return null;
+  const id = String(ev.id || '').slice(0, 100);
+  const label = String(ev.label || '').slice(0, 60);
+  const datetime = String(ev.datetime || '');
+  if (!id || !label || !datetime || isNaN(new Date(datetime).getTime())) return null;
+  return {
+    id,
+    label,
+    datetime,
+    color: /^#[0-9a-fA-F]{3,8}$/.test(ev.color) ? ev.color : '#7b61ff',
+    category: CATEGORIES.includes(ev.category) ? ev.category : '🎯 General',
+    notes: String(ev.notes || '').slice(0, 500),
+    recurrence: ['none', 'daily', 'weekly', 'monthly', 'yearly'].includes(ev.recurrence) ? ev.recurrence : 'none',
+    timezone: String(ev.timezone || '').slice(0, 80),
+    createdAt: ev.createdAt && !isNaN(new Date(ev.createdAt).getTime()) ? String(ev.createdAt) : new Date().toISOString(),
+    order: typeof ev.order === 'number' && isFinite(ev.order) ? ev.order : 0,
+  };
+}
+
 function importEvents(file) {
   const reader = new FileReader();
   reader.onload = (e) => {
     try {
       const imported = JSON.parse(e.target.result);
       if (!Array.isArray(imported)) { showToast('❌ Invalid file format'); return; }
-      const count = imported.length;
-      imported.forEach(ev => {
-        if (!ev.id || !ev.label || !ev.datetime) return;
+      if (imported.length > 500) { showToast('❌ Too many events (max 500)'); return; }
+      let added = 0;
+      imported.forEach(raw => {
+        const ev = sanitizeEvent(raw);
+        if (!ev) return;
         // Avoid duplicates
         if (!events.find(x => x.id === ev.id)) {
-          events.push({ category: '🎯 General', notes: '', recurrence: 'none', timezone: '', order: 0, ...ev });
+          events.push(ev);
+          added++;
         }
       });
       saveEvents();
       render();
-      showToast(`📥 Imported ${count} events!`);
+      showToast(`📥 Imported ${added} events!`);
     } catch { showToast('❌ Failed to parse file'); }
   };
   reader.readAsText(file);
@@ -895,9 +1006,9 @@ function renderStats() {
     card.style.setProperty('--stat-color', s.color);
     card.innerHTML = `
       <div class="stat-card__icon">${s.icon}</div>
-      <div class="stat-card__value">${s.value}</div>
-      <div class="stat-card__label">${s.label}</div>
-      ${s.detail ? `<div class="stat-card__detail">${s.detail}</div>` : ''}
+      <div class="stat-card__value">${escHtml(String(s.value))}</div>
+      <div class="stat-card__label">${escHtml(String(s.label))}</div>
+      ${s.detail ? `<div class="stat-card__detail">${escHtml(String(s.detail))}</div>` : ''}
     `;
     grid.appendChild(card);
   });
@@ -920,6 +1031,9 @@ function openSettings() {
   document.getElementById('setting-volume').value = settings.alarmVolume;
   document.getElementById('setting-notifications').checked = settings.notifications;
   document.getElementById('setting-snooze').value = settings.snoozeDuration;
+  document.getElementById('setting-break-enabled').checked = settings.breakEnabled;
+  document.getElementById('setting-break-interval').value = settings.breakInterval;
+  document.getElementById('setting-break-duration').value = settings.breakDuration;
   document.getElementById('settings-overlay').hidden = false;
 }
 function closeSettings() {
@@ -927,7 +1041,15 @@ function closeSettings() {
   settings.alarmVolume = parseInt(document.getElementById('setting-volume').value);
   settings.notifications = document.getElementById('setting-notifications').checked;
   settings.snoozeDuration = parseInt(document.getElementById('setting-snooze').value);
+  const oldBreak = settings.breakEnabled;
+  settings.breakEnabled = document.getElementById('setting-break-enabled').checked;
+  settings.breakInterval = parseInt(document.getElementById('setting-break-interval').value) || 25;
+  settings.breakDuration = parseInt(document.getElementById('setting-break-duration').value) || 5;
   saveSettings();
+  if (oldBreak !== settings.breakEnabled) {
+    if (settings.breakEnabled) { breakWorkSecs = 0; breakSessionCount = 1; }
+    else { hideBreak(); }
+  }
   document.getElementById('settings-overlay').hidden = true;
 }
 
@@ -941,7 +1063,7 @@ function requestNotifications() {
 // ── Keyboard Shortcuts ─────────────────────────────
 function handleKeyShortcuts(e) {
   const anyOverlay = !confirmOverlay.hidden || !document.getElementById('edit-overlay').hidden ||
-    !document.getElementById('settings-overlay').hidden || !document.getElementById('shortcuts-overlay').hidden;
+    !document.getElementById('settings-overlay').hidden || !document.getElementById('shortcuts-overlay').hidden || !document.getElementById('break-overlay').hidden;
 
   if (e.key === 'Escape') {
     if (alarmActive) { stopAlarm(); e.preventDefault(); return; }
@@ -949,6 +1071,7 @@ function handleKeyShortcuts(e) {
     if (!document.getElementById('edit-overlay').hidden) { closeEdit(); e.preventDefault(); return; }
     if (!document.getElementById('settings-overlay').hidden) { closeSettings(); e.preventDefault(); return; }
     if (!document.getElementById('shortcuts-overlay').hidden) { document.getElementById('shortcuts-overlay').hidden = true; e.preventDefault(); return; }
+    if (!document.getElementById('break-overlay').hidden) { skipBreak(); e.preventDefault(); return; }
     return;
   }
 
@@ -1016,6 +1139,11 @@ document.getElementById('btn-test-sound').addEventListener('click', () => {
 document.getElementById('setting-notifications').addEventListener('change', (e) => {
   if (e.target.checked) requestNotifications();
 });
+
+// Break actions
+document.getElementById('btn-skip-break').addEventListener('click', skipBreak);
+document.getElementById('btn-extend-break').addEventListener('click', extendBreak);
+document.getElementById('btn-end-break').addEventListener('click', endBreak);
 
 // Shortcuts help
 document.getElementById('btn-shortcuts-help').addEventListener('click', () => { document.getElementById('shortcuts-overlay').hidden = false; });
@@ -1095,8 +1223,22 @@ const ALARMS_KEY = 'ticktock_alarms_v1';
 let userAlarms = [];
 let alarmFiredSet = new Set(); // track which alarms fired this minute to avoid re-firing
 
+function sanitizeAlarm(a) {
+  if (!a || typeof a !== 'object') return null;
+  return {
+    id: String(a.id || '').slice(0, 100),
+    time: /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/.test(a.time) ? a.time : '12:00',
+    label: String(a.label || '').slice(0, 60),
+    repeat: ['once', 'daily', 'weekdays', 'weekends'].includes(a.repeat) ? a.repeat : 'once',
+    enabled: !!a.enabled
+  };
+}
+
 function loadAlarms() {
-  try { userAlarms = JSON.parse(localStorage.getItem(ALARMS_KEY)) || []; } catch { userAlarms = []; }
+  try {
+    const raw = JSON.parse(localStorage.getItem(ALARMS_KEY)) || [];
+    userAlarms = raw.map(sanitizeAlarm).filter(Boolean);
+  } catch { userAlarms = []; }
 }
 function saveAlarms() {
   try { localStorage.setItem(ALARMS_KEY, JSON.stringify(userAlarms)); } catch { }
@@ -1422,6 +1564,7 @@ function timerPause() {
 function timerReset() {
   tmRunning = false;
   clearInterval(tmInterval);
+  stopAllSounds();
   tmDisplay.classList.remove('is-done');
   timerSetFromInputs();
   tmStartBtn.disabled = false;
@@ -1439,11 +1582,12 @@ function timerDone() {
   tmStartBtn.innerHTML = '▶ Start';
   tmPauseBtn.disabled = true;
 
-  // Play alarm
+  // Play alarm — store interval globally so stopAllSounds can kill it
   playSound(settings.alarmSound);
-  const tmAlarmInt = setInterval(() => playSound(settings.alarmSound), 2000);
+  if (timerAlarmInterval) clearInterval(timerAlarmInterval);
+  timerAlarmInterval = setInterval(() => playSound(settings.alarmSound), 2000);
   // Auto-stop after 30 seconds
-  setTimeout(() => clearInterval(tmAlarmInt), 30000);
+  setTimeout(() => { if (timerAlarmInterval) { clearInterval(timerAlarmInterval); timerAlarmInterval = null; } }, 30000);
 
   // Show notification
   if (settings.notifications && 'Notification' in window && Notification.permission === 'granted') {
