@@ -4,6 +4,8 @@ A beautiful, premium desktop time management application built with **Tauri v2**
 
 Track your events, set daily alarms, manage your focus with Pomodoro breaks, and measure time precisely—all offline, fast, and secure.
 
+![TickTock Screenshot](Screenshot%202026-04-03%20235216.png)
+
 ---
 
 ## ✨ Features
